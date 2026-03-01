@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Cash Register | Login</title>
+    <style>
+        body {
+            background: #f4f7f6;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .login-card {
+            background: #ffffff;
+            padding: 50px;
+            border-radius: 2px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            width: 320px;
+            border-top: 5px solid #000;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 22px;
+            color: #1a1a1a;
+            margin-bottom: 30px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+        }
+
+        .input-box {
+            margin-bottom: 25px;
+            text-align: left;
+            position: relative;
+        }
+
+        label {
+            display: block;
+            font-size: 11px;
+            text-transform: uppercase;
+            color: #888;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 0;
+            border: none;
+            border-bottom: 2px solid #eee;
+            outline: none;
+            font-size: 16px;
+            transition: 0.3s;
+            background: transparent;
+        }
+
+        input:focus {
+            border-bottom: 2px solid #000;
+        }
+
+        /* Stil za oko */
+        .toggle-password {
+            position: absolute;
+            right: 0;
+            top: 25px;
+            cursor: pointer;
+            font-size: 18px;
+            user-select: none;
+            color: #888;
+        }
+
+        button {
+            width: 100%;
+            padding: 15px;
+            background: #000;
+            color: #fff;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 10px;
+            transition: 0.2s;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        #msg {
+            margin-top: 20px;
+            font-size: 13px;
+            font-weight: bold;
+            min-height: 20px;
+        }
+
+        .loader {
+            display: none;
+            margin: 10px auto;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #000;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="login-card">
+        <h1>
+            Cash Register Access</h1>
+        <form id="loginForm">
+            <div class="input-box">
+                <label>Operator Name</label>
+                <input type="text" id="user" autocomplete="off" required>
+            </div>
+            <div class="input-box">
+                <label>Passcode</label>
+                <input type="password" id="pass" required>
+                <span class="toggle-password" id="eye">👁️</span>
+            </div>
+            <button type="submit" id="loginBtn">Prijavi se</button>
+        </form>
+
+        <div id="msg"></div>
+        <div id="loader" class="loader"></div>
+    </div>
+
+    <script src="korisnici.js"></script>
+    <script>
+        // Logika za prikazivanje/skrivanje šifre
+        const eye = document.getElementById('eye');
+        const passInput = document.getElementById('pass');
+
+        eye.addEventListener('click', function () {
+            // Menjamo tip inputa
+            const type = passInput.getAttribute('type') === 'password' ? 'text' : 'password';
+            passInput.setAttribute('type', type);
+
+            // Opciono: promeni izgled oka (otvoreno/zatvoreno)
+            this.textContent = type === 'password' ? '👁️' : '🙈';
+        });
+
+        // Logika za login
+        document.getElementById('loginForm').onsubmit = function (e) {
+            e.preventDefault();
+
+            const u = document.getElementById('user').value;
+            const p = document.getElementById('pass').value;
+            const msg = document.getElementById('msg');
+            const btn = document.getElementById('loginBtn');
+            const loader = document.getElementById('loader');
+
+            const korisnik = bazaKorisnika.find(k => k.username === u && k.lozinka === p);
+
+            if (korisnik) {
+                btn.disabled = true;
+                msg.style.color = "#2ecc71";
+                msg.innerHTML = "SUCCESSFUL REGISTRATION<br>System initialization...";
+                loader.style.display = "block";
+
+                setTimeout(function () {
+                    window.location.href = "kasa.html";
+                }, 5000);
+
+            } else {
+                msg.style.color = "#e74c3c";
+                msg.innerHTML = "INVALID LOGIN OR PASSWORD!";
+            }
+        };
+    </script>
+
+</body>
+
+</html>

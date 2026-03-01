@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="bs">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>POS - Faktura sa PDV-om</title>
+    <style>
+        :root {
+            --primary: #000;
+            --accent: #2ecc71;
+            --bg: #f4f7f6;
+            --danger: #e74c3c;
+        }
+
+        body {
+            background: var(--bg);
+            font-family: 'Segoe UI', Arial, sans-serif;
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        .sidebar {
+            width: 80px;
+            background: var(--primary);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding-top: 20px;
+            flex-shrink: 0;
+        }
+
+        .nav-btn {
+            width: 100%;
+            padding: 20px 0;
+            color: #fff;
+            text-align: center;
+            cursor: pointer;
+            font-size: 10px;
+            opacity: 0.5;
+            text-transform: uppercase;
+            border: none;
+            background: none;
+        }
+
+        .nav-btn.active {
+            opacity: 1;
+            background: #222;
+            border-left: 4px solid #fff;
+        }
+
+        .container {
+            flex-grow: 1;
+            display: flex;
+            overflow: hidden;
+        }
+
+        .main-view {
+            flex-grow: 1;
+            padding: 25px;
+            overflow-y: auto;
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 10px;
+            overflow: hidden;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #eee;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        }
+
+        .card-media {
+            width: 100%;
+            height: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #f0f0f0;
+        }
+
+        .card-media img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .card-info {
+            padding: 10px;
+        }
+
+        .cart-panel {
+            width: 350px;
+            background: #fff;
+            border-left: 1px solid #ddd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .cart-header {
+            padding: 15px;
+            background: #000;
+            color: #fff;
+            text-align: center;
+            font-weight: bold;
+        }
+
+        .cart-items {
+            flex-grow: 1;
+            padding: 10px;
+            overflow-y: auto;
+        }
+
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+        }
+
+        .modal {
+            background: #fff;
+            padding: 25px;
+            width: 450px;
+            border-radius: 12px;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        label {
+            font-size: 11px;
+            font-weight: bold;
+            color: #444;
+            text-transform: uppercase;
+        }
+
+        input {
+            width: 100%;
+            padding: 8px;
+            margin: 4px 0 12px 0;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            box-sizing: border-box;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-top: 5px;
+        }
+
+        .btn-green {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-black {
+            background: #000;
+            color: #fff;
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: #fff;
+        }
+
+        .btn-ghost {
+            background: #eee;
+        }
+
+        #print-area {
+            display: none;
+        }
+
+        @media print {
+            @page {
+                size: A4;
+                margin: 0;
+            }
+
+            body * {
+                visibility: hidden;
+            }
+
+            #print-area,
+            #print-area * {
+                visibility: visible;
+            }
+
+            #print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                display: block !important;
+                background: #fff;
+                color: #000;
+                padding: 0;
+                margin: 0;
+            }
+
+            .f-table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 15px;
+            }
+
+            .f-table th,
+            .f-table td {
+                border: 1px solid #000;
+                padding: 6px;
+                text-align: left;
+                font-size: 11px;
+            }
+
+            .f-header {
+                display: flex;
+                justify-content: space-between;
+                margin-bottom: 30px;
+            }
+
+            .f-title {
+                font-size: 32px;
+                color: #ccc;
+                font-weight: bold;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="sidebar">
+        <button class="nav-btn active" onclick="changeView('sale')">Prodaja</button>
+        <button class="nav-btn" onclick="changeView('pro')">Proizvodi</button>
+        <button class="nav-btn" onclick="changeView('set')">Postavke</button>
+        <button class="nav-btn" onclick="logout()">Logout</button>
+    </div>
+
+    <div class="container">
+        <div class="main-view" id="view-sale">
+            <h1>POS Prodaja</h1>
+            <div class="grid" id="sale-grid"></div>
+        </div>
+
+        <div class="main-view hidden" id="view-pro">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <h1>Upravljanje</h1>
+                <button class="btn btn-black" style="width:auto;" onclick="showAddModal()">+ NOVI PROIZVOD</button>
+            </div>
+            <div class="grid" id="admin-grid"></div>
+        </div>
+
+        <div class="main-view hidden" id="view-set">
+            <h1>Postavke Firme</h1>
+            <div style="max-width: 400px; background:#fff; padding:20px; border-radius:10px;">
+                <label>Naziv Firme:</label><input type="text" id="cfg-name">
+                <label>Slogan:</label><input type="text" id="cfg-slogan">
+                <label>Adresa:</label><input type="text" id="cfg-addr">
+                <label>Telefon:</label><input type="text" id="cfg-phone">
+                <label>Email / Web:</label><input type="text" id="cfg-email">
+                <button class="btn btn-black" onclick="updateConfig()">SPREMI</button>
+            </div>
+        </div>
+
+        <div class="cart-panel" id="cart-panel-main">
+            <div class="cart-header">RAČUN</div>
+            <div class="cart-items" id="cart-list"></div>
+            <div style="padding:15px; border-top:2px solid #000;">
+                <h3 style="display:flex; justify-content:space-between;">UKUPNO: <span id="sum-km">0.00</span> KM</h3>
+                <button class="btn btn-green" onclick="openCheckout()">ZAKLJUČI FAKTURU</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="overlay" id="modal-checkout">
+        <div class="modal">
+            <h2>Podaci o kupcu</h2>
+            <label>Ime / Firma:</label><input type="text" id="c-name" value="Gotovinski kupac">
+            <label>Adresa:</label><input type="text" id="c-addr">
+            <label>Grad i Poštanski br:</label><input type="text" id="c-city">
+            <label>Telefon:</label><input type="text" id="c-phone">
+            <label>Komentari:</label><input type="text" id="c-note">
+            <button class="btn btn-green" onclick="printFinalReceipt()">ŠTAMPAJ FAKTURU</button>
+            <button class="btn btn-ghost" onclick="closeModals()">ODUSTANI</button>
+        </div>
+    </div>
+
+    <div class="overlay" id="modal-product">
+        <div class="modal">
+            <h2 id="modal-title">Artikal</h2>
+            <input type="hidden" id="edit-idx">
+            <label>Naziv:</label><input type="text" id="inp-name">
+            <label>Cijena (sa PDV):</label><input type="number" id="inp-price" step="0.01">
+            <label>URL Slike:</label><input type="text" id="inp-img">
+            <button class="btn btn-black" onclick="saveProduct()">SPREMI</button>
+            <button class="btn btn-danger" id="delete-btn" onclick="deleteCurrentProduct()">OBRIŠI</button>
+            <button class="btn btn-ghost" onclick="closeModals()">ODUSTANI</button>
+        </div>
+    </div>
+
+    <div id="print-area"></div>
+
+    <script>
+        let db = JSON.parse(localStorage.getItem('pos_db_pdv')) || [];
+        let config = JSON.parse(localStorage.getItem('pos_cfg_pdv')) || { name: "MOJA FIRMA D.O.O.", slogan: "Vaš slogan ovdje", addr: "Ulica 1, Sarajevo", phone: "033/000-000", email: "info@firma.ba" };
+        let cart = [];
+        let pressTimer;
+
+        window.onload = () => { renderAll(); loadConfig(); };
+
+        function loadConfig() {
+            document.getElementById('cfg-name').value = config.name;
+            document.getElementById('cfg-slogan').value = config.slogan;
+            document.getElementById('cfg-addr').value = config.addr;
+            document.getElementById('cfg-phone').value = config.phone;
+            document.getElementById('cfg-email').value = config.email;
+        }
+
+        function updateConfig() {
+            config = { name: document.getElementById('cfg-name').value, slogan: document.getElementById('cfg-slogan').value, addr: document.getElementById('cfg-addr').value, phone: document.getElementById('cfg-phone').value, email: document.getElementById('cfg-email').value };
+            localStorage.setItem('pos_cfg_pdv', JSON.stringify(config));
+            alert("Spremljeno!");
+        }
+
+        function renderAll() {
+            const getMedia = (p) => (p.img && p.img.trim() !== "") ? `<img src="${p.img}">` : `<span style="font-size:40px;">📦</span>`;
+            document.getElementById('sale-grid').innerHTML = db.map((p, i) => `<div class="card" onclick="addToCart(${i})"><div class="card-media">${getMedia(p)}</div><div class="card-info"><b>${p.name}</b><br><span style="color:var(--accent)">${p.price.toFixed(2)} KM</span></div></div>`).join('');
+            document.getElementById('admin-grid').innerHTML = db.map((p, i) => `<div class="card" onmousedown="startPress(${i})" onmouseup="cancelPress()" ontouchstart="startPress(${i})" ontouchend="cancelPress()"><div class="card-media">${getMedia(p)}</div><div class="card-info"><b>${p.name}</b><br><span>${p.price.toFixed(2)} KM</span></div></div>`).join('');
+        }
+
+        function startPress(i) { pressTimer = setTimeout(() => showEditModal(i), 1500); }
+        function cancelPress() { clearTimeout(pressTimer); }
+
+        function showAddModal() {
+            document.getElementById('modal-title').innerText = "Novi Proizvod";
+            document.getElementById('edit-idx').value = "NEW";
+            document.getElementById('inp-name').value = ""; document.getElementById('inp-price').value = ""; document.getElementById('inp-img').value = "";
+            document.getElementById('delete-btn').style.display = "none";
+            document.getElementById('modal-product').style.display = 'flex';
+        }
+
+        function showEditModal(i) {
+            const p = db[i];
+            document.getElementById('edit-idx').value = i;
+            document.getElementById('inp-name').value = p.name; document.getElementById('inp-price').value = p.price; document.getElementById('inp-img').value = p.img || "";
+            document.getElementById('delete-btn').style.display = "block";
+            document.getElementById('modal-product').style.display = 'flex';
+        }
+
+        function saveProduct() {
+            const p = { name: document.getElementById('inp-name').value, price: parseFloat(document.getElementById('inp-price').value), img: document.getElementById('inp-img').value, id: Date.now() };
+            const idx = document.getElementById('edit-idx').value;
+            if (idx === "NEW") db.push(p); else db[idx] = { ...db[idx], ...p };
+            localStorage.setItem('pos_db_pdv', JSON.stringify(db));
+            closeModals(); renderAll();
+        }
+
+        function deleteCurrentProduct() { db.splice(document.getElementById('edit-idx').value, 1); localStorage.setItem('pos_db_pdv', JSON.stringify(db)); closeModals(); renderAll(); }
+
+        function addToCart(i) {
+            const p = db[i];
+            const ex = cart.find(x => x.id === p.id);
+            if (ex) ex.qty++; else cart.push({ ...p, qty: 1 });
+            renderCart();
+        }
+
+        function renderCart() {
+            let total = 0;
+            document.getElementById('cart-list').innerHTML = cart.map((item, i) => {
+                total += item.price * item.qty;
+                return `<div class="cart-item" onclick="cart.splice(${i},1);renderCart()"><span>${item.qty}x ${item.name}</span><b>${(item.price * item.qty).toFixed(2)}</b></div>`;
+            }).join('');
+            document.getElementById('sum-km').innerText = total.toFixed(2);
+        }
+
+        function openCheckout() { if (cart.length) document.getElementById('modal-checkout').style.display = 'flex'; }
+        function closeModals() { document.querySelectorAll('.overlay').forEach(o => o.style.display = 'none'); }
+        function changeView(v) { document.querySelectorAll('.main-view').forEach(x => x.classList.add('hidden')); document.getElementById('view-' + v).classList.remove('hidden'); document.getElementById('cart-panel-main').style.display = (v === 'sale') ? 'flex' : 'none'; }
+
+        // --- FINALNI PRINT SA PDV ---
+        function printFinalReceipt() {
+            const bruto = cart.reduce((s, i) => s + (i.price * i.qty), 0);
+            const neto = bruto / 1.17;
+            const pdvIznos = bruto - neto;
+
+            const cName = document.getElementById('c-name').value;
+            const cAddr = document.getElementById('c-addr').value;
+            const cCity = document.getElementById('c-city').value;
+            const cPhone = document.getElementById('c-phone').value;
+            const cNote = document.getElementById('c-note').value;
+
+            let html = `
+                <div style="padding: 50px; font-family: Arial, sans-serif;">
+                    <div class="f-header">
+                        <div>
+                            <strong style="font-size:20px;">${config.name}</strong><br>
+                            <span style="font-style:italic; color:#666;">${config.slogan}</span><br><br>
+                            ${config.addr}<br> Telefon: ${config.phone}<br> ${config.email}
+                        </div>
+                        <div class="f-title">FAKTURA</div>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-between; margin-bottom: 40px;">
+                        <div style="width: 45%;">
+                            <strong style="border-bottom:1px solid #000;">PRIMA:</strong><br><br>
+                            <strong>${cName}</strong><br>${cAddr}<br>${cCity}<br>${cPhone}
+                        </div>
+                        <div style="width: 45%; text-align: right;">
+                            <strong>BROJ FAKTURE:</strong> #${Date.now().toString().slice(-6)}<br>
+                            <strong>DATUM:</strong> ${new Date().toLocaleDateString()}<br>
+                            <strong>VALUTA:</strong> KM
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 25px; font-size: 12px; background: #f9f9f9; padding: 10px;">
+                        <strong>NAPOMENA:</strong> ${cNote || "Bez posebnih napomena."}
+                    </div>
+
+                    <table class="f-table">
+                        <thead>
+                            <tr style="background: #eee;">
+                                <th style="width: 10%; text-align:center;">KOLIČINA</th>
+                                <th style="width: 50%;">OPIS ARTIKLA / USLUGE</th>
+                                <th style="width: 20%; text-align:right;">JED. CIJENA (sa PDV)</th>
+                                <th style="width: 20%; text-align:right;">UKUPNO</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${cart.map(i => `
+                                <tr>
+                                    <td style="text-align:center;">${i.qty}</td>
+                                    <td>${i.name}</td>
+                                    <td style="text-align:right;">${i.price.toFixed(2)}</td>
+                                    <td style="text-align:right;">${(i.price * i.qty).toFixed(2)}</td>
+                                </tr>`).join('')}
+                            ${Array(8).fill('<tr><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td><td>&nbsp;</td></tr>').join('')}
+                        </tbody>
+                    </table>
+
+                    <div style="margin-left: 65%; margin-top: 20px;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                            <tr><td style="padding:5px;">OSNOVICA (Neto):</td><td style="text-align:right; border: 1px solid #000; padding:5px;">${neto.toFixed(2)}</td></tr>
+                            <tr><td style="padding:5px;">PDV (17%):</td><td style="text-align:right; border: 1px solid #000; padding:5px;">${pdvIznos.toFixed(2)}</td></tr>
+                            <tr style="font-weight:bold; font-size: 15px;">
+                                <td style="padding:5px;">UKUPNO:</td>
+                                <td style="text-align:right; border: 2px solid #000; padding:5px; background:#f2f2f2;">${bruto.toFixed(2)} KM</td>
+                            </tr>
+                        </table>
+                    </div>
+
+                    <div style="margin-top: 80px; text-align: center; font-size: 11px; border-top: 1px solid #eee; padding-top: 20px;">
+                        <p>Uplatu izvršiti na žiro račun korisnika <strong>${config.name}</strong>.</p>
+                        <p>Za sva pitanja nas kontaktirajte na ${config.phone}.</p>
+                        <br>
+                        <strong style="font-size: 14px; text-transform: uppercase;">Zahvaljujemo na obavljenom poslu!</strong>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('print-area').innerHTML = html;
+            window.print();
+            cart = []; renderCart(); closeModals();
+        }
+        logout = () => { if (confirm("Da li ste sigurni da želite da se odjavite?")) { window.location.href = "index.html"; } }
+    </script>
+</body>
+
+</html>
