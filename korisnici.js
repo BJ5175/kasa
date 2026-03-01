@@ -1,4 +1,4 @@
 const bazaKorisnika = [
-    { username: "test", lozinka: "123" },
+    { username: "BJ SITES", lozinka: "12345" },
     { username: "ROOT", lozinka: "admin" }
 ];
